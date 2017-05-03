@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">XNOR MXNET</string>
+    <string name="please_wait">Please Wait</string>
+    <string name="loading_model">Loading Model</string>
+</resources>
