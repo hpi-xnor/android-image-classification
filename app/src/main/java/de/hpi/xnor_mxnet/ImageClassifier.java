@@ -27,19 +27,25 @@ class ImageClassifier {
     private MainActivity mActivity;
     private ProgressDialog mProgressDialog;
 
-    private final int mImageWidth = 224;
-    private final int mImageHeight = 224;
+    private final int mImageWidth = 32;
+    private final int mImageHeight = 32;
+    private boolean modelNeedsMeanAdjust;
+
+    public int getImageWidth() {
+        return mImageWidth;
+    }
+
+    public int getImageHeight() {
+        return mImageHeight;
+    }
 
     ImageClassifier(MainActivity mainActivity) {
         mActivity = mainActivity;
+        modelNeedsMeanAdjust = false;
         new ModelPreparationTask().execute();
     }
 
-    Classification classifyImage(Bitmap bitmap) {
-        bitmap = resizeImage(bitmap);
-        ByteBuffer byteBuffer = ByteBuffer.allocate(bitmap.getByteCount());
-        bitmap.copyPixelsToBuffer(byteBuffer);
-        byte[] bytes = byteBuffer.array();
+    float[] subtractMean(byte[] bytes) {
         float[] colors = new float[bytes.length / 4 * 3];
 
         float mean_b = mMean.get("b");
@@ -51,6 +57,34 @@ class ImageClassifier {
             colors[1 * 224 * 224 + j] = (float)(((int)(bytes[i + 1])) & 0xFF) - mean_g;
             colors[2 * 224 * 224 + j] = (float)(((int)(bytes[i + 2])) & 0xFF) - mean_b;
         }
+        return colors;
+    }
+
+    float[] extractRGBData(byte[] bytes) {
+        float[] colors = new float[bytes.length / 4 * 3];
+
+        int imageOffset = mImageWidth * mImageHeight;
+        for (int i = 0; i < bytes.length; i += 4) {
+            int j = i / 4;
+            colors[0 * imageOffset + j] = (float)((int)(bytes[i + 0]) & 0xFF);
+            colors[1 * imageOffset + j] = (float)((int)(bytes[i + 1]) & 0xFF);
+            colors[2 * imageOffset + j] = (float)((int)(bytes[i + 2]) & 0xFF);
+        }
+        return colors;
+    }
+
+
+    Classification classifyImage(Bitmap bitmap) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(bitmap.getByteCount());
+        bitmap.copyPixelsToBuffer(byteBuffer);
+        byte[] bytes = byteBuffer.array();
+
+        float[] colors;
+        if (modelNeedsMeanAdjust) {
+            colors = subtractMean(bytes);
+        } else {
+            colors = extractRGBData(bytes);
+        }
         mPredictor.forward("data", colors);
         final float[] result = mPredictor.getOutput(0);
 
@@ -61,10 +95,6 @@ class ImageClassifier {
         String tag = mLabels.get(index);
         String [] arr = tag.split(" ", 2);
         return new Classification(arr[0], arr[1], result[index]);
-    }
-
-    private Bitmap resizeImage(Bitmap bitmap) {
-        return Bitmap.createScaledBitmap(bitmap, mImageWidth, mImageHeight, true);
     }
 
     private class ModelPreparationTask extends AsyncTask<Void, Void, Predictor> {
@@ -82,8 +112,10 @@ class ImageClassifier {
         protected Predictor doInBackground(Void... voids) {
             try {
                 buildPredictor();
-                mLabels = readRawTextFile(mActivity, R.raw.synset);
-                loadMean(mActivity, R.raw.mean);
+                mLabels = readRawTextFile(mActivity, R.raw.cifar10_labels);
+                if (modelNeedsMeanAdjust) {
+                    loadMean(mActivity, R.raw.mean);
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -95,15 +127,15 @@ class ImageClassifier {
             if (mProgressDialog != null) {
                 mProgressDialog.dismiss();
             }
-            mActivity.findViewById(R.id.camera).setEnabled(true);
+            mActivity.runCameraLiveView();
         }
     }
 
     private void buildPredictor() {
-        final byte[] symbol = readRawFile(mActivity, R.raw.symbol);
-        final byte[] params = readRawFile(mActivity, R.raw.params);
+        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_cifar10_binary_symbol);
+        final byte[] params = readRawFile(mActivity, R.raw.binarized_cifar10_binary_0000);
         final Predictor.Device device = new Predictor.Device(Predictor.Device.Type.CPU, 0);
-        final int[] shape = {1, 3, 224, 224};
+        final int[] shape = {1, 3, mImageHeight, mImageWidth};
         final String key = "data";
         final Predictor.InputNode node = new Predictor.InputNode(key, shape);
 

@@ -13,8 +13,10 @@ import android.content.res.Configuration;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Point;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.YuvImage;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraCharacteristics;
@@ -38,6 +40,8 @@ import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.io.ByteArrayOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,11 +50,11 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import static de.hpi.xnor_mxnet.MainActivity.REQUEST_CAMERA_PERMISSION;
 
 public class CameraFrameCapture extends Fragment
         implements View.OnClickListener, FragmentCompat.OnRequestPermissionsResultCallback {
 
+    private static final int REQUEST_CAMERA_PERMISSION = 2;
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private static final int MAX_PREVIEW_WIDTH = 1080;
     private static final int MAX_PREVIEW_HEIGHT = 1920;
@@ -164,17 +168,7 @@ public class CameraFrameCapture extends Fragment
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
      * still image is ready to be saved.
      */
-    private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
-            = new ImageReader.OnImageAvailableListener() {
-
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-            Image image = mImageReader.acquireLatestImage();
-            if(image != null) {
-                mBackgroundHandler.post(new ImageClassificationTask(image, (MainActivity) getActivity()));
-            }
-        }
-    };
+    private ImageReader.OnImageAvailableListener mOnImageAvailableListener;
 
     /**
      * {@link CaptureRequest.Builder} for the camera preview
@@ -197,6 +191,23 @@ public class CameraFrameCapture extends Fragment
     private CameraCaptureSession.CaptureCallback mCaptureCallback
             = new CameraCaptureSession.CaptureCallback() {
     };
+
+    private final ConnectionCallback mCameraConnectionCallback;
+
+    public interface ConnectionCallback {
+        void onPreviewSizeChosen(Size size);
+    }
+
+    private CameraFrameCapture(ConnectionCallback connectionCallback, ImageReader.OnImageAvailableListener imageListener) {
+        this.mCameraConnectionCallback = connectionCallback;
+        this.mOnImageAvailableListener = imageListener;
+    }
+
+    public static CameraFrameCapture newInstance(
+            final ConnectionCallback connectionCallback,
+            final ImageReader.OnImageAvailableListener imageListener) {
+        return new CameraFrameCapture(connectionCallback, imageListener);
+    }
 
     /**
      * Given {@code choices} of {@code Size}s supported by a camera, choose the smallest one that
@@ -246,9 +257,7 @@ public class CameraFrameCapture extends Fragment
         }
     }
 
-    public static CameraFrameCapture newInstance() {
-        return new CameraFrameCapture();
-    }
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -258,7 +267,6 @@ public class CameraFrameCapture extends Fragment
 
     @Override
     public void onViewCreated(final View view, Bundle savedInstanceState) {
-        view.findViewById(R.id.camera).setOnClickListener(this);
         mTextureView = (AutoFitTextureView) view.findViewById(R.id.texture);
     }
 
@@ -332,8 +340,7 @@ public class CameraFrameCapture extends Fragment
                 Size largest = Collections.max(
                         Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                         new CompareSizesByArea());
-                mImageReader = ImageReader.newInstance(240, 240,
-                        ImageFormat.JPEG, /*maxImages*/2);
+                mImageReader = ImageReader.newInstance(240, 240, ImageFormat.YUV_420_888, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(
                         mOnImageAvailableListener, mBackgroundHandler);
 
@@ -402,6 +409,7 @@ public class CameraFrameCapture extends Fragment
                             mPreviewSize.getHeight(), mPreviewSize.getWidth());
                 }
                 mCameraId = cameraId;
+                mCameraConnectionCallback.onPreviewSizeChosen(mPreviewSize);
                 return;
             }
         } catch (Exception e) {
