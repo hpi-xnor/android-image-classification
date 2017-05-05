@@ -7,7 +7,10 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.ImageFormat;
 import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
@@ -20,12 +23,15 @@ import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.util.Size;
+import android.util.TypedValue;
 import android.view.Display;
+import android.view.KeyEvent;
 import android.view.WindowManager;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.nio.ByteBuffer;
+import java.util.Vector;
 
 
 public class MainActivity extends Activity implements ImageReader.OnImageAvailableListener {
@@ -36,6 +42,7 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
 
     private static final String PERMISSION_CAMERA = Manifest.permission.CAMERA;
     private static final String PERMISSION_STORAGE = Manifest.permission.READ_EXTERNAL_STORAGE;
+    private static final float TEXT_SIZE_DIP = 10;
     private static String TAG;
 
     private Handler handler;
@@ -52,6 +59,11 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
     private Bitmap croppedBitmap;
     private Matrix frameToCropTransform;
     private Matrix cropToFrameTransform;
+    private boolean debug;
+    private Bitmap cropCopyBitmap;
+    private BorderedText borderedText;
+    private long lasProcessingTimeMs;
+    private boolean isFirstImage = true;
 
     public void setComputing(boolean value) {
         computing = value;
@@ -121,14 +133,16 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
     }
 
     public void runCameraLiveView() {
-        final Fragment cameraView = CameraFrameCapture.newInstance(
-                new CameraFrameCapture.ConnectionCallback() {
+        final Fragment cameraView = CameraConnectionFragment.newInstance(
+                new CameraConnectionFragment.ConnectionCallback() {
                     @Override
-                    public void onPreviewSizeChosen(Size size) {
+                    public void onPreviewSizeChosen(Size size, int rotation) {
                         MainActivity.this.onPreviewSizeChosen(size);
                     }
                 },
-                this
+                this,
+                R.layout.placerecognizer_ui,
+                new Size(mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight())
         );
 
         getFragmentManager().beginTransaction()
@@ -152,6 +166,12 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
     }
 
     public void onPreviewSizeChosen(final Size size) {
+        final float textSizePx =
+                TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, TEXT_SIZE_DIP, getResources().getDisplayMetrics());
+        borderedText = new BorderedText(textSizePx);
+        borderedText.setTypeface(Typeface.MONOSPACE);
+
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();
 
@@ -164,12 +184,20 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
                 ImageUtils.getTransformationMatrix(
                         previewWidth, previewHeight,
                         mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
-                        0, true);
+                        90, true);
 
         cropToFrameTransform = new Matrix();
         frameToCropTransform.invert(cropToFrameTransform);
 
         yuvBytes = new byte[3][];
+
+        addCallback(
+                new OverlayView.DrawCallback() {
+                    @Override
+                    public void drawCallback(final Canvas canvas) {
+                        renderDebug(canvas);
+                    }
+                });
     }
 
     protected void fillBytes(final Image.Plane[] planes, final byte[][] yuvBytes) {
@@ -185,6 +213,55 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
         }
     }
 
+    public void requestRender() {
+        final OverlayView overlay = (OverlayView) findViewById(R.id.debug_overlay);
+        if (overlay != null) {
+            overlay.postInvalidate();
+        }
+    }
+
+    public void addCallback(final OverlayView.DrawCallback callback) {
+        final OverlayView overlay = (OverlayView) findViewById(R.id.debug_overlay);
+        if (overlay != null) {
+            overlay.addCallback(callback);
+        }
+    }
+
+    @Override
+    public boolean onKeyDown(final int keyCode, final KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            debug = !debug;
+            requestRender();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private void renderDebug(final Canvas canvas) {
+        if (!debug) {
+            return;
+        }
+        final Bitmap copy = cropCopyBitmap;
+        if (copy != null) {
+            final Matrix matrix = new Matrix();
+            final float scaleFactor = 2;
+            matrix.postScale(scaleFactor, scaleFactor);
+            matrix.postTranslate(
+                    canvas.getWidth() - copy.getWidth() * scaleFactor,
+                    canvas.getHeight() - copy.getHeight() * scaleFactor);
+            canvas.drawBitmap(copy, matrix, new Paint());
+
+            final Vector<String> lines = new Vector<>();
+
+            lines.add("Frame: " + previewWidth + "x" + previewHeight);
+            lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
+            lines.add("View: " + canvas.getWidth() + "x" + canvas.getHeight());
+            lines.add("Inference time: " + lasProcessingTimeMs + "ms");
+
+            borderedText.drawLines(canvas, 10, canvas.getHeight() - 10, lines);
+        }
+    }
+
     @Override
     public void onImageAvailable(ImageReader imageReader) {
         Image image = null;
@@ -196,7 +273,8 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
                 return;
             }
 
-            if (computing) {
+            if (computing || isFirstImage) {
+                isFirstImage = false;
                 image.close();
                 return;
             }
@@ -221,8 +299,8 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
                     uvRowStride,
                     uvPixelStride,
                     false);
-
             image.close();
+            Trace.endSection();
         } catch (final Exception e) {
             if (image != null) {
                 image.close();
@@ -235,10 +313,14 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
         rgbFrameBitmap.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
         final Canvas canvas = new Canvas(croppedBitmap);
         canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
+        cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
 
         if (handler != null) {
             handler.post(new ImageClassificationTask(croppedBitmap, this));
         }
-        Trace.endSection();
+    }
+
+    public void setLasProcessingTimeMs(long lasProcessingTimeMs) {
+        this.lasProcessingTimeMs = lasProcessingTimeMs;
     }
 }

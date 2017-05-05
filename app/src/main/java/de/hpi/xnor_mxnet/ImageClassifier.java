@@ -4,6 +4,8 @@ import android.app.ProgressDialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
+import android.os.SystemClock;
+import android.os.Trace;
 
 import org.dmlc.mxnet.Predictor;
 import org.json.JSONException;
@@ -41,7 +43,7 @@ class ImageClassifier {
 
     ImageClassifier(MainActivity mainActivity) {
         mActivity = mainActivity;
-        modelNeedsMeanAdjust = false;
+        modelNeedsMeanAdjust = true;
         new ModelPreparationTask().execute();
     }
 
@@ -51,11 +53,13 @@ class ImageClassifier {
         float mean_b = mMean.get("b");
         float mean_g = mMean.get("g");
         float mean_r = mMean.get("r");
+
+        int imageOffset = mImageWidth * mImageHeight;
         for (int i = 0; i < bytes.length; i += 4) {
             int j = i / 4;
-            colors[0 * 224 * 224 + j] = (float)(((int)(bytes[i + 0])) & 0xFF) - mean_r;
-            colors[1 * 224 * 224 + j] = (float)(((int)(bytes[i + 1])) & 0xFF) - mean_g;
-            colors[2 * 224 * 224 + j] = (float)(((int)(bytes[i + 2])) & 0xFF) - mean_b;
+            colors[0 * imageOffset + j] = (float)(((int)(bytes[i + 3])) & 0xFF) - mean_b;
+            colors[1 * imageOffset + j] = (float)(((int)(bytes[i + 2])) & 0xFF) - mean_g;
+            colors[2 * imageOffset + j] = (float)(((int)(bytes[i + 1])) & 0xFF) - mean_r;
         }
         return colors;
     }
@@ -66,38 +70,53 @@ class ImageClassifier {
         int imageOffset = mImageWidth * mImageHeight;
         for (int i = 0; i < bytes.length; i += 4) {
             int j = i / 4;
-            colors[0 * imageOffset + j] = (float)((int)(bytes[i + 0]) & 0xFF);
-            colors[1 * imageOffset + j] = (float)((int)(bytes[i + 1]) & 0xFF);
-            colors[2 * imageOffset + j] = (float)((int)(bytes[i + 2]) & 0xFF);
+            colors[0 * imageOffset + j] = (float)((int)(bytes[i + 3]) & 0xFF);
+            colors[1 * imageOffset + j] = (float)((int)(bytes[i + 2]) & 0xFF);
+            colors[2 * imageOffset + j] = (float)((int)(bytes[i + 1]) & 0xFF);
         }
         return colors;
     }
 
 
     Classification classifyImage(Bitmap bitmap) {
+        Trace.beginSection("create Image Buffer");
         ByteBuffer byteBuffer = ByteBuffer.allocate(bitmap.getByteCount());
         bitmap.copyPixelsToBuffer(byteBuffer);
         byte[] bytes = byteBuffer.array();
+        Trace.endSection();
 
+        Trace.beginSection("color adaption");
         float[] colors;
         if (modelNeedsMeanAdjust) {
             colors = subtractMean(bytes);
         } else {
             colors = extractRGBData(bytes);
         }
-        mPredictor.forward("data", colors);
-        final float[] result = mPredictor.getOutput(0);
+        Trace.endSection();
+        Trace.beginSection("Model execution");
 
+        final long startTime = SystemClock.uptimeMillis();
+        mPredictor.forward("data", colors);
+        mActivity.setLasProcessingTimeMs(SystemClock.uptimeMillis() - startTime);
+
+        final float[] result = mPredictor.getOutput(0);
+        Trace.endSection();
+
+        Trace.beginSection("gather top results");
         int index = 0;
         for (int i = 0; i < result.length; ++i) {
             if (result[index] < result[i]) index = i;
         }
         String tag = mLabels.get(index);
         String [] arr = tag.split(" ", 2);
+        Trace.endSection();
+
+        mActivity.requestRender();
         return new Classification(arr[0], arr[1], result[index]);
+//        return new Classification("0", "Kekse", 1.0f);
     }
 
-    private class ModelPreparationTask extends AsyncTask<Void, Void, Predictor> {
+    private class ModelPreparationTask extends AsyncTask<Void, Void, Void> {
 
         @Override
         protected void onPreExecute() {
@@ -109,21 +128,21 @@ class ImageClassifier {
         }
 
         @Override
-        protected Predictor doInBackground(Void... voids) {
+        protected Void doInBackground(Void... voids) {
             try {
                 buildPredictor();
-                mLabels = readRawTextFile(mActivity, R.raw.cifar10_labels);
+                mLabels = readRawTextFile(mActivity, R.raw.synset);
                 if (modelNeedsMeanAdjust) {
                     loadMean(mActivity, R.raw.mean);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return mPredictor;
+            return null;
         }
 
         @Override
-        protected void onPostExecute(Predictor predictor) {
+        protected void onPostExecute(Void voids) {
             if (mProgressDialog != null) {
                 mProgressDialog.dismiss();
             }
@@ -132,8 +151,10 @@ class ImageClassifier {
     }
 
     private void buildPredictor() {
-        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_cifar10_binary_symbol);
-        final byte[] params = readRawFile(mActivity, R.raw.binarized_cifar10_binary_0000);
+//        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_resnet_18_imagenet_1_stage_fullprecision_32bit_symbol);
+//        final byte[] params = readRawFile(mActivity, R.raw.binarized_resnet_18_imagenet_1_stage_fullprecision_32bit_0000);
+        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_symbol);
+        final byte[] params = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_0000);
         final Predictor.Device device = new Predictor.Device(Predictor.Device.Type.CPU, 0);
         final int[] shape = {1, 3, mImageHeight, mImageWidth};
         final String key = "data";
@@ -143,20 +164,10 @@ class ImageClassifier {
     }
 
     private void loadMean(Context ctx, int resId) {
-        try {
-            final StringBuilder sb = new StringBuilder();
-            final List<String> lines = readRawTextFile(ctx, resId);
-            for (final String line : lines) {
-                sb.append(line);
-            }
-            final JSONObject meanJson = new JSONObject(sb.toString());
-            mMean = new HashMap<>();
-            mMean.put("b", (float) meanJson.optDouble("b"));
-            mMean.put("g", (float) meanJson.optDouble("g"));
-            mMean.put("r", (float) meanJson.optDouble("r"));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        mMean = new HashMap<>();
+        mMean.put("b", (float) 103.939);
+        mMean.put("g", (float) 116.779);
+        mMean.put("r", (float) 123.68);
     }
 
     private static byte[] readRawFile(Context ctx, int resId)

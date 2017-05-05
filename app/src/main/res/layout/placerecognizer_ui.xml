@@ -21,4 +21,10 @@
         android:textSize="30sp"
         android:visibility="visible" />
 
+    <de.hpi.xnor_mxnet.OverlayView
+        android:id="@+id/debug_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentBottom="true" />
+
 </RelativeLayout>
