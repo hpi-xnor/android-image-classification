@@ -9,6 +9,10 @@ class Classification {
         _id = id; _label = label; _probability = probability;
     }
 
+    Classification(int id, String label, float probability) {
+        _id = String.valueOf(id); _label = label; _probability = probability;
+    }
+
     public String get_id() { return _id; }
     String get_label() { return _label; }
     float get_probability() { return _probability; }

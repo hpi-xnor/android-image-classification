@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +30,8 @@ class ImageClassifier {
     private MainActivity mActivity;
     private ProgressDialog mProgressDialog;
 
-    private final int mImageWidth = 32;
-    private final int mImageHeight = 32;
+    private final int mImageWidth = 224;
+    private final int mImageHeight = 224;
     private boolean modelNeedsMeanAdjust;
 
     public int getImageWidth() {
@@ -78,7 +79,7 @@ class ImageClassifier {
     }
 
 
-    Classification classifyImage(Bitmap bitmap) {
+    Classification[] classifyImage(Bitmap bitmap) {
         Trace.beginSection("create Image Buffer");
         ByteBuffer byteBuffer = ByteBuffer.allocate(bitmap.getByteCount());
         bitmap.copyPixelsToBuffer(byteBuffer);
@@ -103,16 +104,11 @@ class ImageClassifier {
         Trace.endSection();
 
         Trace.beginSection("gather top results");
-        int index = 0;
-        for (int i = 0; i < result.length; ++i) {
-            if (result[index] < result[i]) index = i;
-        }
-        String tag = mLabels.get(index);
-        String [] arr = tag.split(" ", 2);
+        Classification[] results = getTopKresults(result, 5);
         Trace.endSection();
 
         mActivity.requestRender();
-        return new Classification(arr[0], arr[1], result[index]);
+        return results;
 //        return new Classification("0", "Kekse", 1.0f);
     }
 
@@ -151,10 +147,10 @@ class ImageClassifier {
     }
 
     private void buildPredictor() {
-//        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_resnet_18_imagenet_1_stage_fullprecision_32bit_symbol);
-//        final byte[] params = readRawFile(mActivity, R.raw.binarized_resnet_18_imagenet_1_stage_fullprecision_32bit_0000);
-        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_symbol);
-        final byte[] params = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_0000);
+        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_resnet_18_binary_symbol);
+        final byte[] params = readRawFile(mActivity, R.raw.binarized_resnet_18_binary_0033);
+//        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_symbol);
+//        final byte[] params = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_0000);
         final Predictor.Device device = new Predictor.Device(Predictor.Device.Type.CPU, 0);
         final int[] shape = {1, 3, mImageHeight, mImageWidth};
         final String key = "data";
@@ -204,24 +200,26 @@ class ImageClassifier {
         return result;
     }
 
-//    private Classification[] getTopKresults(float[] input_matrix, int k) {
-//        float[] sorted_values = input_matrix.clone();
-//        Arrays.sort(sorted_values);
-//
-//        Classification[] topK = new Classification[k];
-//        List<Float> input_list = new ArrayList<>();
-//        for (float f: input_matrix) {
-//            input_list.add(f);
-//        }
-//
-//        if (BuildConfig.DEBUG && sorted_values.length < k) {
-//            throw new RuntimeException("Too few predicted values for getting topK results!");
-//        }
-//
-//        for (int i = 0; i < topK.length; ++i) {
-//            int classId = input_list.indexOf(sorted_values[sorted_values.length - i - 1]);
-//            topK[i] = new Classification(classId, labels[classId], input_matrix[classId]);
-//        }
-//        return topK;
-//    }
+    private Classification[] getTopKresults(float[] input_matrix, int k) {
+        float[] sorted_values = input_matrix.clone();
+        Arrays.sort(sorted_values);
+
+        Classification[] topK = new Classification[k];
+        List<Float> input_list = new ArrayList<>();
+        for (float f: input_matrix) {
+            input_list.add(f);
+        }
+
+        if (BuildConfig.DEBUG && sorted_values.length < k) {
+            throw new RuntimeException("Too few predicted values for getting topK results!");
+        }
+
+        for (int i = 0; i < topK.length; ++i) {
+            int classId = input_list.indexOf(sorted_values[sorted_values.length - i - 1]);
+            String tag = mLabels.get(classId);
+            String [] tagInfo = tag.split(" ", 2);
+            topK[i] = new Classification(classId, tagInfo[1], input_matrix[classId]);
+        }
+        return topK;
+    }
 }

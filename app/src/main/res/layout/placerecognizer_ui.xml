@@ -10,15 +10,15 @@
         android:id="@+id/texture"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"/>
+        android:layout_alignParentBottom="true"/>
 
     <TextView
         android:id="@+id/classDisplay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:text=""
-        android:textSize="30sp"
+        android:layout_alignParentTop="true"
+        android:background="@color/colorPrimary"
+        android:textSize="20sp"
         android:visibility="visible" />
 
     <de.hpi.xnor_mxnet.OverlayView
