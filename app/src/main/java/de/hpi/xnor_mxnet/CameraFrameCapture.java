@@ -340,7 +340,10 @@ public class CameraFrameCapture extends Fragment
                 Size largest = Collections.max(
                         Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
                         new CompareSizesByArea());
-                mImageReader = ImageReader.newInstance(240, 240, ImageFormat.YUV_420_888, /*maxImages*/2);
+                mImageReader =
+                        ImageReader.newInstance(
+                                mPreviewSize.getWidth(), mPreviewSize.getHeight(), ImageFormat.YUV_420_888, /*maxImages*/2);
+//                mImageReader = ImageReader.newInstance(mPreviewSize.getWidth(), mPreviewSize.getHeight(), ImageFormat.JPEG, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(
                         mOnImageAvailableListener, mBackgroundHandler);
 
@@ -409,7 +412,6 @@ public class CameraFrameCapture extends Fragment
                             mPreviewSize.getHeight(), mPreviewSize.getWidth());
                 }
                 mCameraId = cameraId;
-                mCameraConnectionCallback.onPreviewSizeChosen(mPreviewSize);
                 return;
             }
         } catch (Exception e) {
@@ -435,6 +437,7 @@ public class CameraFrameCapture extends Fragment
                 throw new RuntimeException("Time out waiting to lock camera opening.");
             }
             manager.openCamera(mCameraId, mStateCallback, mBackgroundHandler);
+            mCameraConnectionCallback.onPreviewSizeChosen(mPreviewSize);
         } catch (CameraAccessException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
