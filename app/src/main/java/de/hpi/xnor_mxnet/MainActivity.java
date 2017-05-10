@@ -1,13 +1,10 @@
 package de.hpi.xnor_mxnet;
 
 import android.Manifest;
-import android.app.Activity;
 import android.app.Fragment;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Typeface;
@@ -17,24 +14,21 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.SystemClock;
 import android.os.Trace;
-import android.provider.MediaStore;
-import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.util.Size;
 import android.util.TypedValue;
-import android.view.Display;
 import android.view.KeyEvent;
 import android.view.WindowManager;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.nio.ByteBuffer;
 import java.util.Vector;
 
+import de.hpi.xnor_mxnet.imageclassification.ImageNetClassifier;
 
-public class MainActivity extends Activity implements ImageReader.OnImageAvailableListener {
+
+public class MainActivity extends CameraLiveViewActivity implements ImageReader.OnImageAvailableListener {
     static {
         System.loadLibrary("native-image-utils");
     }
@@ -49,8 +43,7 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
     private HandlerThread handlerThread;
 
 
-    public ImageClassifier mImageClassifier;
-    private boolean computing;
+    private ImageNetClassifier mImageNetClassifier;
     private byte[][] yuvBytes;
     private int[] rgbBytes;
     private int previewWidth;
@@ -64,10 +57,6 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
     private BorderedText borderedText;
     private long lasProcessingTimeMs;
     private boolean isFirstImage = true;
-
-    public void setComputing(boolean value) {
-        computing = value;
-    }
 
     private boolean hasPermission() {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.M ||
@@ -85,7 +74,7 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
     }
 
     private void buildImageClassifier() {
-        mImageClassifier = new ImageClassifier(this);
+        mImageNetClassifier = new ImageNetClassifier(this);
     }
 
     @Override
@@ -142,7 +131,7 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
                 },
                 this,
                 R.layout.placerecognizer_ui,
-                new Size(mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight())
+                new Size(mImageNetClassifier.getImageWidth(), mImageNetClassifier.getImageHeight())
         );
 
         getFragmentManager().beginTransaction()
@@ -178,12 +167,12 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
         Log.i(TAG, String.format("Initializing cameraPreview at size %dx%d", previewWidth, previewHeight));
         rgbBytes = new int[previewWidth * previewHeight];
         rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
-        croppedBitmap = Bitmap.createBitmap(mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(), Bitmap.Config.ARGB_8888);
+        croppedBitmap = Bitmap.createBitmap(mImageNetClassifier.getImageWidth(), mImageNetClassifier.getImageHeight(), Bitmap.Config.ARGB_8888);
 
         frameToCropTransform =
                 ImageUtils.getTransformationMatrix(
                         previewWidth, previewHeight,
-                        mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
+                        mImageNetClassifier.getImageWidth(), mImageNetClassifier.getImageHeight(),
                         90, true);
 
         cropToFrameTransform = new Matrix();
@@ -316,7 +305,7 @@ public class MainActivity extends Activity implements ImageReader.OnImageAvailab
         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
 
         if (handler != null) {
-            handler.post(new ImageClassificationTask(croppedBitmap, this));
+            handler.post(new ImageClassificationTask(croppedBitmap, this, mImageNetClassifier));
         }
     }
 

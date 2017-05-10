@@ -1,18 +1,22 @@
 package de.hpi.xnor_mxnet;
 
+import android.app.Activity;
 import android.graphics.Bitmap;
-import android.util.StringBuilderPrinter;
 import android.widget.TextView;
+
+import de.hpi.xnor_mxnet.imageclassification.Classification;
+import de.hpi.xnor_mxnet.imageclassification.ImageClassifier;
+import de.hpi.xnor_mxnet.imageclassification.ImageNetClassifier;
 
 class ImageClassificationTask implements Runnable {
 
     private final Bitmap mImage;
     private final ImageClassifier mClassifier;
-    private final MainActivity mActivity;
+    private final CameraLiveViewActivity mActivity;
 
-    ImageClassificationTask(Bitmap image, MainActivity activity) {
+    ImageClassificationTask(Bitmap image, CameraLiveViewActivity activity, ImageClassifier classifier) {
         mImage = image;
-        mClassifier = activity.mImageClassifier;
+        mClassifier = classifier;
         mActivity = activity;
     }
 
