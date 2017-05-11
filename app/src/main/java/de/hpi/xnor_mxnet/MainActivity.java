@@ -27,7 +27,6 @@ import java.util.Vector;
 
 import de.hpi.xnor_mxnet.imageclassification.ImageClassifier;
 import de.hpi.xnor_mxnet.imageclassification.ImageNetClassifier;
-import de.hpi.xnor_mxnet.imageclassification.TextRecognizer;
 
 
 public class MainActivity extends CameraLiveViewActivity implements ImageReader.OnImageAvailableListener {
@@ -173,7 +172,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
 
         frameToCropTransform =
                 ImageUtils.getTransformationMatrix(
-                        previewWidth, previewHeight,
+                        mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
                         mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
                         90, true);
 
@@ -302,8 +301,9 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
         }
 
         rgbFrameBitmap.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
+        Bitmap scaledBitmap = Bitmap.createScaledBitmap(rgbFrameBitmap, mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(), true);
         final Canvas canvas = new Canvas(croppedBitmap);
-        canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
+        canvas.drawBitmap(scaledBitmap, frameToCropTransform, null);
         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
 
         if (handler != null) {
