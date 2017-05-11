@@ -55,10 +55,8 @@ public class ImageNetClassifier extends AbstractClassifier {
 
     @Override
     public void loadModel() {
-        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_resnet_18_binary_symbol);
-        final byte[] params = readRawFile(mActivity, R.raw.binarized_resnet_18_binary_0033);
-//        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_symbol);
-//        final byte[] params = readRawFile(mActivity, R.raw.binarized_32_cifar10_binary_0000);
+        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_resnet_18_symbol);
+        final byte[] params = readRawFile(mActivity, R.raw.binarized_resnet_18_params);
         final Predictor.Device device = new Predictor.Device(Predictor.Device.Type.CPU, 0);
         final int[] shape = {1, 3, mImageHeight, mImageWidth};
         final String key = "data";

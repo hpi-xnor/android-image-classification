@@ -25,7 +25,9 @@ import android.widget.Toast;
 import java.nio.ByteBuffer;
 import java.util.Vector;
 
+import de.hpi.xnor_mxnet.imageclassification.ImageClassifier;
 import de.hpi.xnor_mxnet.imageclassification.ImageNetClassifier;
+import de.hpi.xnor_mxnet.imageclassification.TextRecognizer;
 
 
 public class MainActivity extends CameraLiveViewActivity implements ImageReader.OnImageAvailableListener {
@@ -43,7 +45,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
     private HandlerThread handlerThread;
 
 
-    private ImageNetClassifier mImageNetClassifier;
+    private ImageClassifier mImageClassifier;
     private byte[][] yuvBytes;
     private int[] rgbBytes;
     private int previewWidth;
@@ -74,7 +76,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
     }
 
     private void buildImageClassifier() {
-        mImageNetClassifier = new ImageNetClassifier(this);
+        mImageClassifier = new ImageNetClassifier(this);
     }
 
     @Override
@@ -131,7 +133,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
                 },
                 this,
                 R.layout.placerecognizer_ui,
-                new Size(mImageNetClassifier.getImageWidth(), mImageNetClassifier.getImageHeight())
+                new Size(mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight())
         );
 
         getFragmentManager().beginTransaction()
@@ -167,12 +169,12 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
         Log.i(TAG, String.format("Initializing cameraPreview at size %dx%d", previewWidth, previewHeight));
         rgbBytes = new int[previewWidth * previewHeight];
         rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
-        croppedBitmap = Bitmap.createBitmap(mImageNetClassifier.getImageWidth(), mImageNetClassifier.getImageHeight(), Bitmap.Config.ARGB_8888);
+        croppedBitmap = Bitmap.createBitmap(mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(), Bitmap.Config.ARGB_8888);
 
         frameToCropTransform =
                 ImageUtils.getTransformationMatrix(
                         previewWidth, previewHeight,
-                        mImageNetClassifier.getImageWidth(), mImageNetClassifier.getImageHeight(),
+                        mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
                         90, true);
 
         cropToFrameTransform = new Matrix();
@@ -305,7 +307,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
 
         if (handler != null) {
-            handler.post(new ImageClassificationTask(croppedBitmap, this, mImageNetClassifier));
+            handler.post(new ImageClassificationTask(croppedBitmap, this, mImageClassifier));
         }
     }
 
