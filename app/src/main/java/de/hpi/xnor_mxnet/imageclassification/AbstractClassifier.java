@@ -108,12 +108,13 @@ abstract class AbstractClassifier implements ImageClassifier {
         float mean_g = mMean.get("g");
         float mean_r = mMean.get("r");
 
+        // the R,G,B order has been tested (by HJ, 19.10.17), the R->G->B (1,2,3) got better results from prediction
         int imageOffset = mImageWidth * mImageHeight;
         for (int i = 0; i < bytes.length; i += 4) {
             int j = i / 4;
-            colors[0 * imageOffset + j] = (float)(((int)(bytes[i + 3])) & 0xFF) - mean_b;
+            colors[0 * imageOffset + j] = (float)(((int)(bytes[i + 1])) & 0xFF) - mean_r;
             colors[1 * imageOffset + j] = (float)(((int)(bytes[i + 2])) & 0xFF) - mean_g;
-            colors[2 * imageOffset + j] = (float)(((int)(bytes[i + 1])) & 0xFF) - mean_r;
+            colors[2 * imageOffset + j] = (float)(((int)(bytes[i + 3])) & 0xFF) - mean_b;
         }
         return colors;
     }
@@ -124,9 +125,9 @@ abstract class AbstractClassifier implements ImageClassifier {
         int imageOffset = mImageWidth * mImageHeight;
         for (int i = 0; i < bytes.length; i += 4) {
             int j = i / 4;
-            colors[0 * imageOffset + j] = (float)((int)(bytes[i + 3]) & 0xFF);
+            colors[0 * imageOffset + j] = (float)((int)(bytes[i + 1]) & 0xFF);
             colors[1 * imageOffset + j] = (float)((int)(bytes[i + 2]) & 0xFF);
-            colors[2 * imageOffset + j] = (float)((int)(bytes[i + 1]) & 0xFF);
+            colors[2 * imageOffset + j] = (float)((int)(bytes[i + 3]) & 0xFF);
         }
         return colors;
     }

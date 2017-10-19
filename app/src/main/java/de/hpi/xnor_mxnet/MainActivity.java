@@ -172,7 +172,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
 
         frameToCropTransform =
                 ImageUtils.getTransformationMatrix(
-                        mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
+                        previewWidth, previewHeight,
                         mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
                         90, true);
 
@@ -301,9 +301,8 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
         }
 
         rgbFrameBitmap.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
-        Bitmap scaledBitmap = Bitmap.createScaledBitmap(rgbFrameBitmap, mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(), true);
         final Canvas canvas = new Canvas(croppedBitmap);
-        canvas.drawBitmap(scaledBitmap, frameToCropTransform, null);
+        canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
 
         if (handler != null) {
