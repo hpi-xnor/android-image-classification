@@ -47,6 +47,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
     private ImageClassifier mImageClassifier;
     private byte[][] yuvBytes;
     private int[] rgbBytes;
+    private int[] croppedBytes;
     private int previewWidth;
     private int previewHeight;
     private Bitmap rgbFrameBitmap;
@@ -168,6 +169,7 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
         Log.i(TAG, String.format("Initializing cameraPreview at size %dx%d", previewWidth, previewHeight));
         rgbBytes = new int[previewWidth * previewHeight];
         rgbFrameBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
+        croppedBytes = new int[mImageClassifier.getImageWidth() * mImageClassifier.getImageHeight()];
         croppedBitmap = Bitmap.createBitmap(mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(), Bitmap.Config.ARGB_8888);
 
         frameToCropTransform =
@@ -175,6 +177,14 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
                         previewWidth, previewHeight,
                         mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(),
                         90, true);
+
+        frameToCropTransform = new Matrix();
+        // Translate so center of image is at origin.
+        frameToCropTransform.postTranslate(-previewWidth / 2.0f, -previewWidth / 2.0f);
+        // Rotate around origin.
+        frameToCropTransform.postRotate(90);
+        // Translate back from origin centered reference to destination frame.
+        frameToCropTransform.postTranslate(previewWidth / 2.0f, previewHeight / 2.0f);
 
         cropToFrameTransform = new Matrix();
         frameToCropTransform.invert(cropToFrameTransform);
@@ -301,8 +311,20 @@ public class MainActivity extends CameraLiveViewActivity implements ImageReader.
         }
 
         rgbFrameBitmap.setPixels(rgbBytes, 0, previewWidth, 0, 0, previewWidth, previewHeight);
-        final Canvas canvas = new Canvas(croppedBitmap);
-        canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
+        croppedBitmap = Bitmap.createBitmap(
+                rgbFrameBitmap,
+                previewWidth / 2 - mImageClassifier.getImageWidth() / 2,
+                previewHeight / 2 - mImageClassifier.getImageHeight() / 2,
+                mImageClassifier.getImageWidth(),
+                mImageClassifier.getImageHeight(),
+                frameToCropTransform,
+                true
+                );
+        //ImageUtils.resizeImage(rgbBytes, previewWidth, previewHeight, croppedBytes, mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight());
+        //croppedBitmap.setPixels(croppedBytes, 0, mImageClassifier.getImageWidth(), 0, 0, mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight());
+        //Bitmap scaledBitmap = Bitmap.createScaledBitmap(rgbFrameBitmap, mImageClassifier.getImageWidth(), mImageClassifier.getImageHeight(), true);
+//        final Canvas canvas = new Canvas(croppedBitmap);
+//        canvas.drawBitmap(rgbFrameBitmap, frameToCropTransform, null);
         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
 
         if (handler != null) {
