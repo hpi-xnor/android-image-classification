@@ -75,10 +75,6 @@ public class CameraConnectionFragment extends Fragment {
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     private static final String FRAGMENT_DIALOG = "dialog";
 
-    private boolean deviceHasLegacyCamera = false;
-
-
-
   static {
     ORIENTATIONS.append(Surface.ROTATION_0, 90);
     ORIENTATIONS.append(Surface.ROTATION_90, 0);
@@ -361,10 +357,6 @@ public class CameraConnectionFragment extends Fragment {
       for (final String cameraId : manager.getCameraIdList()) {
         final CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
 
-          int supportedHardwareLevel = characteristics.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL);
-          deviceHasLegacyCamera = supportedHardwareLevel == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY;
-
-
         // We don't use a front facing camera in this sample.
         final Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
         if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
@@ -377,18 +369,6 @@ public class CameraConnectionFragment extends Fragment {
         if (map == null) {
           continue;
         }
-
-          if (deviceHasLegacyCamera) {
-              // For still image captures, we use the largest available size.
-              final Size largest =
-                      Collections.max(
-                              Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
-                              new CompareSizesByArea());
-              textureView.setFixedDimensions(largest);
-          }
-
-
-
         sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
 
         // Danger, W.R.! Attempting to use too large a preview size could  exceed the camera

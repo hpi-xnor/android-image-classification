@@ -29,16 +29,6 @@ public class AutoFitTextureView extends TextureView {
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
 
-    private int fixedWidth = 0;
-    private int fixedHeight = 0;
-    private boolean hasFixedSize = false;
-
-    public void setFixedDimensions(Size dimensions) {
-        fixedWidth = dimensions.getWidth();
-        fixedHeight = dimensions.getHeight();
-        hasFixedSize = true;
-    }
-
     public AutoFitTextureView(Context context) {
         this(context, null);
     }
@@ -71,10 +61,6 @@ public class AutoFitTextureView extends TextureView {
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-        if (hasFixedSize) {
-            setMeasuredDimension(fixedWidth, fixedHeight);
-            return;
-        }
 
         int width = MeasureSpec.getSize(widthMeasureSpec);
         int height = MeasureSpec.getSize(heightMeasureSpec);

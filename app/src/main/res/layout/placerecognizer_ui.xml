@@ -1,30 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/container"
-    tools:context="de.hpi.xnor_mxnet.MainActivity" >
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <de.hpi.xnor_mxnet.AutoFitTextureView
         android:id="@+id/texture"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"/>
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="bottom"/>
 
     <TextView
         android:id="@+id/classDisplay"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
         android:background="@color/colorPrimary"
         android:textSize="20sp"
-        android:visibility="visible" />
+        android:visibility="visible"
+        android:layout_gravity="top"/>
 
     <de.hpi.xnor_mxnet.OverlayView
         android:id="@+id/debug_overlay"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_alignParentBottom="true" />
+        android:layout_height="match_parent" />
 
-</RelativeLayout>
+</FrameLayout>
