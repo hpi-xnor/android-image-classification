@@ -20,6 +20,7 @@ limitations under the License.
 #include <stdio.h>
 
 #include "yuv2rgb.h"
+#include "image_resize.h"
 
 #define IMAGEUTILS_METHOD(METHOD_NAME) \
   Java_de_hpi_xnor_1mxnet_ImageUtils_##METHOD_NAME  // NOLINT
@@ -41,6 +42,10 @@ JNIEXPORT void JNICALL IMAGEUTILS_METHOD(convertYUV420ToARGB8888)(
 JNIEXPORT void JNICALL IMAGEUTILS_METHOD(convertYUV420SPToRGB565)(
     JNIEnv* env, jclass clazz, jbyteArray input, jbyteArray output, jint width,
     jint height);
+
+JNIEXPORT void JNICALL IMAGEUTILS_METHOD(resizeImage)(
+    JNIEnv* env, jclass clazz, jintArray input, jint inWidth, jint inHeight,
+    jintArray output, jint outWidth, jint outHeight);
 
 #ifdef __cplusplus
 }
@@ -114,4 +119,20 @@ JNIEXPORT void JNICALL IMAGEUTILS_METHOD(convertYUV420SPToRGB565)(
 
   env->ReleaseByteArrayElements(input, i, JNI_ABORT);
   env->ReleaseByteArrayElements(output, o, 0);
+}
+
+JNIEXPORT void JNICALL IMAGEUTILS_METHOD(resizeImage)(
+        JNIEnv* env, jclass clazz, jintArray input, jint inWidth, jint inHeight,
+        jintArray output, jint outWidth, jint outHeight) {
+  jboolean inputCopy = JNI_FALSE;
+  jint* const inData = env->GetIntArrayElements(input, &inputCopy);
+
+  jboolean outputCopy = JNI_FALSE;
+  jint* const outData = env->GetIntArrayElements(output, &outputCopy);
+
+  resize_image(reinterpret_cast<uint8_t*>(inData), inWidth, inHeight,
+               reinterpret_cast<uint8_t*>(outData), outWidth, outHeight);
+
+  env->ReleaseIntArrayElements(input, inData, JNI_ABORT);
+  env->ReleaseIntArrayElements(output, outData, 0);
 }

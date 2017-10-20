@@ -87,6 +87,9 @@ public class ImageUtils {
     public static native void convertYUV420SPToRGB565(
             byte[] input, byte[] output, int width, int height);
 
+    public static native void resizeImage(
+            int[] input, int inWidth, int inHeight, int[] output, int outWidth, int outHeight);
+
     /**
      * Returns a transformation matrix from one reference frame into another.
      * Handles cropping (if maintaining aspect ratio is desired) and rotation.
