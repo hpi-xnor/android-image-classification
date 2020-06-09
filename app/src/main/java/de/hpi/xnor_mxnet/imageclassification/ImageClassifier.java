@@ -9,4 +9,5 @@ public interface ImageClassifier {
     void loadModel();
     void loadLabels();
     void loadMean();
+    void loadStdDev();
 }

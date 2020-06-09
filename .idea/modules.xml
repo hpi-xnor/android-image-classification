@@ -3,6 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/XNOR-MXNET.iml" filepath="$PROJECT_DIR$/XNOR-MXNET.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/android-image-classification.iml" filepath="$PROJECT_DIR$/.idea/modules/android-image-classification.iml" group="android-image-classification" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/android-image-classification-app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/android-image-classification-app.iml" group="android-image-classification/app" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
