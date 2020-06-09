@@ -31,6 +31,7 @@ public class ModelPreparationTask extends AsyncTask<ImageClassifier, Void, Void>
             classifier.loadModel();
             classifier.loadLabels();
             classifier.loadMean();
+            classifier.loadStdDev();
         }
         return null;
     }

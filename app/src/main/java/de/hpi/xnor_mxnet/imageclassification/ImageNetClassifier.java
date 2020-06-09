@@ -13,7 +13,8 @@ import de.hpi.xnor_mxnet.MainActivity;
 import de.hpi.xnor_mxnet.R;
 
 public class ImageNetClassifier extends AbstractClassifier {
-    private final boolean modelNeedsMeanAdjust = true;
+    protected final boolean modelNeedsMeanAdjust = true;
+    protected final boolean modelNeedsStdAdjust = true;
 
     public ImageNetClassifier(MainActivity activity) {
         super(activity);
@@ -30,11 +31,8 @@ public class ImageNetClassifier extends AbstractClassifier {
 
         Trace.beginSection("color adaption");
         float[] colors;
-        if (modelNeedsMeanAdjust) {
-            colors = subtractMean(bytes);
-        } else {
-            colors = extractRGBData(bytes);
-        }
+        colors = prepareInputImage(bytes);
+
         Trace.endSection();
         Trace.beginSection("Model execution");
 
@@ -55,8 +53,8 @@ public class ImageNetClassifier extends AbstractClassifier {
 
     @Override
     public void loadModel() {
-        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_resnet_18_symbol);
-        final byte[] params = readRawFile(mActivity, R.raw.binarized_resnet_18_params);
+        final byte[] symbol = readRawFile(mActivity, R.raw.binarized_densenet_28_symbol);
+        final byte[] params = readRawFile(mActivity, R.raw.binarized_densenet_28_params);
         final Predictor.Device device = new Predictor.Device(Predictor.Device.Type.CPU, 0);
         final int[] shape = {1, 3, mImageHeight, mImageWidth};
         final String key = "data";
@@ -79,5 +77,15 @@ public class ImageNetClassifier extends AbstractClassifier {
             mMean.put("r", (float) 123.68);
         }
 
+    }
+
+    @Override
+    public void loadStdDev() {
+        mStdDev = new HashMap<>();
+        if (modelNeedsStdAdjust) {
+            mStdDev.put("b", (float) 57.375);
+            mStdDev.put("g", (float) 57.12);
+            mStdDev.put("r", (float) 58.393);
+        }
     }
 }
