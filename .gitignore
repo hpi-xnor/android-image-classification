@@ -42,3 +42,6 @@ captures/
 app/.externalNativeBuild/
 app/src/main/jniLibs
 app/src/main/res/raw
+
+.idea
+.cxx
