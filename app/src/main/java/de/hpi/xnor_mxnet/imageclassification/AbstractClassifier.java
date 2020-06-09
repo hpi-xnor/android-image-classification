@@ -112,20 +112,25 @@ abstract class AbstractClassifier implements ImageClassifier {
         int imageOffset = mImageWidth * mImageHeight;
         for (int i = 0; i < bytes.length; i += 4) {
             int j = i / 4;
-            colors[0 * imageOffset + j] = (float)(((int)(bytes[i + 1])) & 0xFF);
-            colors[1 * imageOffset + j] = (float)(((int)(bytes[i + 2])) & 0xFF);
-            colors[2 * imageOffset + j] = (float)(((int)(bytes[i + 3])) & 0xFF);
+
+            int indexR = j;
+            int indexG = imageOffset + j;
+            int indexB = 2 * imageOffset + j;
+
+            colors[indexR] = (float)(((int)(bytes[i + 1])) & 0xFF);
+            colors[indexG] = (float)(((int)(bytes[i + 2])) & 0xFF);
+            colors[indexB] = (float)(((int)(bytes[i + 3])) & 0xFF);
 
             if (modelNeedsMeanAdjust) {
-                colors[0 * imageOffset + j] = (float)(((int)(bytes[i + 1])) & 0xFF) - mMean.get("r");
-                colors[1 * imageOffset + j] = (float)(((int)(bytes[i + 2])) & 0xFF) - mMean.get("g");
-                colors[2 * imageOffset + j] = (float)(((int)(bytes[i + 3])) & 0xFF) - mMean.get("b");
+                colors[indexR] -= mMean.get("r");
+                colors[indexG] -= mMean.get("g");
+                colors[indexB] -= mMean.get("b");
             }
 
             if (modelNeedsStdAdjust) {
-                colors[0 * imageOffset + j] = (float)(((int)(bytes[i + 1])) & 0xFF) / mStdDev.get("r");
-                colors[1 * imageOffset + j] = (float)(((int)(bytes[i + 2])) & 0xFF) / mStdDev.get("g");
-                colors[2 * imageOffset + j] = (float)(((int)(bytes[i + 3])) & 0xFF) / mStdDev.get("b");
+                colors[indexR] /= mStdDev.get("r");
+                colors[indexG] /= mStdDev.get("g");
+                colors[indexB] /= mStdDev.get("b");
             }
         }
         return colors;
